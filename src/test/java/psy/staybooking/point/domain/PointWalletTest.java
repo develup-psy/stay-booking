@@ -45,4 +45,32 @@ class PointWalletTest {
         assertThat(wallet.getTotalAmount()).isEqualTo(80_000L);
         assertThatThrownBy(() -> wallet.releaseHold(10L)).isInstanceOf(BusinessException.class);
     }
+
+    @Test
+    void getAvailableAmountExcludesHeldAmount() {
+        PointWallet wallet = PointWallet.create(1L, 100_000L);
+        wallet.hold(10L, 20_000L);
+        wallet.hold(11L, 30_000L);
+
+        assertThat(wallet.getAvailableAmount()).isEqualTo(50_000L);
+    }
+
+    @Test
+    void holdThrowsWhenAvailablePointIsInsufficient() {
+        PointWallet wallet = PointWallet.create(1L, 10_000L);
+
+        assertThatThrownBy(() -> wallet.hold(10L, 20_000L))
+            .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void releaseHoldChangesStatusToReleased() {
+        PointWallet wallet = PointWallet.create(1L, 100_000L);
+        wallet.hold(10L, 20_000L);
+
+        wallet.releaseHold(10L);
+
+        assertThat(wallet.getHolds().getFirst().getStatus()).isEqualTo(PointHoldStatus.RELEASED);
+        assertThat(wallet.getAvailableAmount()).isEqualTo(100_000L);
+    }
 }
