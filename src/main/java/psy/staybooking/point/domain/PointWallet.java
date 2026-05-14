@@ -54,11 +54,14 @@ public class PointWallet extends BaseTimeEntity {
     }
 
     public PointHold hold(Long bookingId, long amount) {
-        PointHold hold = PointHold.hold(bookingId, amount);
-
         if (this.holds.stream().anyMatch(existing -> existing.getBookingId().equals(bookingId))) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "하나의 예약에는 하나의 포인트 잠금만 연결할 수 있습니다.");
         }
+        if (getAvailableAmount() < amount) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_POINT, "사용 가능한 포인트가 부족합니다.");
+        }
+
+        PointHold hold = PointHold.hold(bookingId, amount);
 
         this.holds.add(hold);
         hold.assignWallet(this);
@@ -96,5 +99,13 @@ public class PointWallet extends BaseTimeEntity {
             throw new BusinessException(ErrorCode.INSUFFICIENT_POINT, "보유 포인트가 부족합니다.");
         }
         this.totalAmount -= amount;
+    }
+
+    public long getAvailableAmount() {
+        long heldAmount = this.holds.stream()
+            .filter(hold -> hold.getStatus() == PointHoldStatus.HELD)
+            .mapToLong(PointHold::getAmount)
+            .sum();
+        return this.totalAmount - heldAmount;
     }
 }
