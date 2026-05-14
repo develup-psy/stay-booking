@@ -46,3 +46,8 @@ logging:
 
 app:
   time-zone: Asia/Seoul
+
+checkout:
+  token:
+    secret: stay-booking-checkout-token-secret-key-2026-seoul
+    ttl-seconds: 180
