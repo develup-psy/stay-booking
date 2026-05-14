@@ -11,7 +11,7 @@ class PaymentTest {
 
     @Test
     void createCreatesPointOnlyPayment() {
-        Payment payment = Payment.create(1L, 80_000L, 80_000L, null, 0L);
+        Payment payment = Payment.create(1L, 80_000L, 80_000L, null);
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
         assertThat(payment.isPointOnly()).isTrue();
@@ -22,20 +22,20 @@ class PaymentTest {
 
     @Test
     void createThrowsWhenExternalMethodIsMissing() {
-        assertThatThrownBy(() -> Payment.create(1L, 100_000L, 20_000L, null, 80_000L))
+        assertThatThrownBy(() -> Payment.create(1L, 100_000L, 20_000L, null))
             .isInstanceOf(BusinessException.class);
     }
 
     @Test
     void markSucceededChangesPointOnlyPaymentStatus() {
-        Payment payment = Payment.create(1L, 100_000L, 20_000L, ExternalPaymentMethod.CARD, 80_000L);
+        Payment payment = Payment.create(1L, 100_000L, 20_000L, ExternalPaymentMethod.CARD);
 
         assertThatThrownBy(payment::markSucceeded).isInstanceOf(BusinessException.class);
     }
 
     @Test
     void markSucceededCompletesPointOnlyPayment() {
-        Payment payment = Payment.create(1L, 80_000L, 80_000L, null, 0L);
+        Payment payment = Payment.create(1L, 80_000L, 80_000L, null);
 
         payment.markSucceeded();
 
@@ -44,7 +44,7 @@ class PaymentTest {
 
     @Test
     void startProcessingAddsApprovalRequestedLog() {
-        Payment payment = Payment.create(1L, 100_000L, 20_000L, ExternalPaymentMethod.CARD, 80_000L);
+        Payment payment = Payment.create(1L, 100_000L, 20_000L, ExternalPaymentMethod.CARD);
         payment.startProcessing();
 
         assertThat(payment.getLogs()).hasSize(2);
@@ -53,7 +53,7 @@ class PaymentTest {
 
     @Test
     void approveChangesPaymentStatusAndAddsLog() {
-        Payment payment = Payment.create(1L, 100_000L, 20_000L, ExternalPaymentMethod.CARD, 80_000L);
+        Payment payment = Payment.create(1L, 100_000L, 20_000L, ExternalPaymentMethod.CARD);
         payment.startProcessing();
         payment.approve("pg-tx-1", LocalDateTime.of(2026, 5, 14, 11, 1));
 
@@ -65,7 +65,7 @@ class PaymentTest {
 
     @Test
     void failChangesPaymentStatusAndAddsLog() {
-        Payment payment = Payment.create(1L, 100_000L, 20_000L, ExternalPaymentMethod.CARD, 80_000L);
+        Payment payment = Payment.create(1L, 100_000L, 20_000L, ExternalPaymentMethod.CARD);
         payment.startProcessing();
         payment.fail("DECLINED", "card declined");
 
@@ -77,7 +77,7 @@ class PaymentTest {
 
     @Test
     void approveWorksWithoutSeparateAttemptEntity() {
-        Payment payment = Payment.create(1L, 100_000L, 20_000L, ExternalPaymentMethod.CARD, 80_000L);
+        Payment payment = Payment.create(1L, 100_000L, 20_000L, ExternalPaymentMethod.CARD);
         payment.approve("pg-tx-1", LocalDateTime.of(2026, 5, 14, 11, 1));
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
