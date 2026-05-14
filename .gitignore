@@ -1,6 +1,8 @@
 HELP.md
 .gradle
 build/
+*.pdf
+.DS_Store
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
