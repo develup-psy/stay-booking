@@ -25,6 +25,7 @@ public class PaymentTransactionService {
             throw new BusinessException(ErrorCode.INVALID_PARAMETER, "외부 결제 상세 정보가 필요합니다.");
         }
         if (request.getPaymentDetail() != null) {
+            request.getPaymentDetail().validate();
             if (externalPaymentMethod != null && externalPaymentMethod != request.getPaymentDetail().getExternalPaymentMethod()) {
                 throw new BusinessException(ErrorCode.INVALID_PARAMETER, "외부 결제 수단과 결제 상세 정보가 일치하지 않습니다.");
             }
@@ -34,7 +35,7 @@ public class PaymentTransactionService {
             throw new BusinessException(ErrorCode.INVALID_PARAMETER, "외부 결제 수단이 필요합니다.");
         }
         if (request.getPointAmount() == request.getTotalAmount() && request.getPaymentDetail() != null) {
-            throw new BusinessException(ErrorCode.INVALID_PARAMETER, "외부 결제 수단과 결제 상세 정보가 일치하지 않습니다.");
+            throw new BusinessException(ErrorCode.INVALID_PARAMETER, "포인트 전액 결제에는 외부 결제 상세 정보가 있으면 안 됩니다.");
         }
 
         Payment payment = paymentRepository.save(
@@ -46,26 +47,38 @@ public class PaymentTransactionService {
             )
         );
 
-        if (payment.isPointOnly()) {
-            payment.markSucceeded();
-            return payment;
+        if (!payment.isPointOnly()) {
+            payment.startProcessing();
         }
-
-        payment.startProcessing();
         return payment;
     }
 
     @Transactional
-    public Payment completePayment(Long paymentId, PaymentResponseDto paymentResponse) {
-        Payment payment = paymentRepository.findById(paymentId)
-            .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "결제 정보를 찾을 수 없습니다."));
+    public Payment completePointOnlyPayment(Long paymentId) {
+        Payment payment = getPayment(paymentId);
+        payment.markSucceeded();
+        return payment;
+    }
 
-        if (paymentResponse.isApproved()) {
-            payment.approve(paymentResponse.getProviderTransactionId(), paymentResponse.getApprovedAt());
-            return payment;
-        }
+    @Transactional
+    public Payment succeedPayment(Long paymentId, PaymentResponseDto paymentResponse) {
+        Payment payment = getPayment(paymentId);
+        payment.recordApprovalSuccess(paymentResponse.getProviderTransactionId());
+        payment.approve(paymentResponse.getProviderTransactionId(), paymentResponse.getApprovedAt());
+        return payment;
+    }
 
+    @Transactional
+    public Payment failPayment(Long paymentId, PaymentResponseDto paymentResponse) {
+        Payment payment = getPayment(paymentId);
+        payment.recordApprovalFailure(paymentResponse.getProviderErrorCode(), paymentResponse.getErrorMessage());
         payment.fail(paymentResponse.getErrorCode(), paymentResponse.getErrorMessage());
         return payment;
+    }
+
+    @Transactional(readOnly = true)
+    public Payment getPayment(Long paymentId) {
+        return paymentRepository.findById(paymentId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "결제 정보를 찾을 수 없습니다."));
     }
 }

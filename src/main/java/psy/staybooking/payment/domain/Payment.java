@@ -160,9 +160,39 @@ public class Payment extends BaseTimeEntity {
         addLog(PaymentEventType.SUCCEEDED, "결제가 승인되었습니다.");
     }
 
+    public void recordApprovalSuccess(String providerTransactionId) {
+        if (this.status != PaymentStatus.PENDING) {
+            throw new BusinessException(ErrorCode.INVALID_STATE_TRANSITION, "결제 상태 전이가 올바르지 않습니다.");
+        }
+        if (this.isPointOnly()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "포인트 전액 결제는 외부 결제 시도 성공 기록을 남길 수 없습니다.");
+        }
+        if (providerTransactionId == null || providerTransactionId.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_PARAMETER, "외부 결제 거래 식별자는 필수입니다.");
+        }
+        addLog(PaymentEventType.APPROVAL_SUCCEEDED, "PG 승인에 성공했습니다.");
+    }
+
+    public void recordApprovalFailure(String providerErrorCode, String errorMessage) {
+        if (this.status != PaymentStatus.PENDING) {
+            throw new BusinessException(ErrorCode.INVALID_STATE_TRANSITION, "결제 상태 전이가 올바르지 않습니다.");
+        }
+        if (this.isPointOnly()) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "포인트 전액 결제는 외부 결제 시도 실패 기록을 남길 수 없습니다.");
+        }
+        if (providerErrorCode == null || providerErrorCode.isBlank()) {
+            addLog(PaymentEventType.APPROVAL_FAILED, errorMessage);
+            return;
+        }
+        addLog(PaymentEventType.APPROVAL_FAILED, providerErrorCode + ": " + errorMessage);
+    }
+
     public void fail(String errorCode, String errorMessage) {
         if (this.status != PaymentStatus.PENDING) {
             throw new BusinessException(ErrorCode.INVALID_STATE_TRANSITION, "결제 상태 전이가 올바르지 않습니다.");
+        }
+        if (errorCode == null || errorCode.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_PARAMETER, "결제 실패 코드는 필수입니다.");
         }
         this.status = PaymentStatus.FAILED;
         this.lastErrorCode = errorCode;

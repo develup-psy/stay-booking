@@ -35,8 +35,10 @@ class PaymentServiceTest {
     @Test
     void processPaymentCompletesPointOnlyPaymentWithoutProcessor() {
         Payment payment = Payment.create(1L, 50_000L, 50_000L, null);
-        payment.markSucceeded();
         when(paymentTransactionService.createPayment(any(PaymentCreateDto.class))).thenReturn(payment);
+        Payment succeededPayment = Payment.create(1L, 50_000L, 50_000L, null);
+        succeededPayment.markSucceeded();
+        when(paymentTransactionService.completePointOnlyPayment(payment.getPaymentId())).thenReturn(succeededPayment);
 
         Payment result = paymentService.processPayment(
             PaymentCreateDto.builder()
@@ -61,7 +63,7 @@ class PaymentServiceTest {
         Payment approvedPayment = Payment.create(1L, 100_000L, 20_000L, ExternalPaymentMethod.CARD);
         approvedPayment.startProcessing();
         approvedPayment.approve("mock-1", LocalDateTime.of(2026, 5, 14, 18, 0));
-        when(paymentTransactionService.completePayment(eq(pendingPayment.getPaymentId()), any(PaymentResponseDto.class))).thenReturn(approvedPayment);
+        when(paymentTransactionService.succeedPayment(eq(pendingPayment.getPaymentId()), any(PaymentResponseDto.class))).thenReturn(approvedPayment);
 
         Payment payment = paymentService.processPayment(
             PaymentCreateDto.builder()
@@ -86,12 +88,12 @@ class PaymentServiceTest {
         pendingPayment.startProcessing();
         when(paymentTransactionService.createPayment(any(PaymentCreateDto.class))).thenReturn(pendingPayment);
         when(paymentProcessor.processPayment(any(Payment.class), any())).thenReturn(
-            PaymentResponseDto.failed("MOCK_DECLINED", "모의 결제가 거절되었습니다.")
+            PaymentResponseDto.approvalFailed("MOCK_DECLINED", "모의 결제가 거절되었습니다.")
         );
         Payment failedPayment = Payment.create(1L, 100_000L, 0L, ExternalPaymentMethod.YPAY);
         failedPayment.startProcessing();
-        failedPayment.fail("MOCK_DECLINED", "모의 결제가 거절되었습니다.");
-        when(paymentTransactionService.completePayment(eq(pendingPayment.getPaymentId()), any(PaymentResponseDto.class))).thenReturn(failedPayment);
+        failedPayment.fail(psy.staybooking.common.exception.ErrorCode.PAYMENT_APPROVAL_FAILED.getCode(), "모의 결제가 거절되었습니다.");
+        when(paymentTransactionService.failPayment(eq(pendingPayment.getPaymentId()), any(PaymentResponseDto.class))).thenReturn(failedPayment);
 
         Payment payment = paymentService.processPayment(
             PaymentCreateDto.builder()
@@ -106,6 +108,6 @@ class PaymentServiceTest {
         );
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
-        assertThat(payment.getLastErrorCode()).isEqualTo("MOCK_DECLINED");
+        assertThat(payment.getLastErrorCode()).isEqualTo(psy.staybooking.common.exception.ErrorCode.PAYMENT_APPROVAL_FAILED.getCode());
     }
 }

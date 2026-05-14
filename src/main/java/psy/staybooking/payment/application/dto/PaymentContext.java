@@ -14,6 +14,7 @@ import psy.staybooking.payment.domain.Payment;
 public class PaymentContext {
 
     private Long paymentId;
+    private Long bookingId;
     private ExternalPaymentMethod externalPaymentMethod;
     private long amount;
     private PaymentDetailDto paymentDetail;
@@ -21,6 +22,7 @@ public class PaymentContext {
     public static PaymentContext from(Payment payment, PaymentCreateDto request) {
         return PaymentContext.builder()
             .paymentId(payment.getPaymentId())
+            .bookingId(payment.getBookingId())
             .externalPaymentMethod(payment.getExternalMethod())
             .amount(payment.getExternalAmount())
             .paymentDetail(request.getPaymentDetail())

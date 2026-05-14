@@ -51,3 +51,11 @@ checkout:
   token:
     secret: stay-booking-checkout-token-secret-key-2026-seoul
     ttl-seconds: 180
+
+booking:
+  stock:
+    path: redis
+
+payment:
+  api:
+    base-url: ${PAYMENT_API_BASE_URL:http://localhost:8081}
