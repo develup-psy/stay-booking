@@ -30,4 +30,17 @@ public enum ErrorCode {
     private final HttpStatus status;
     private final String code;
     private final String message;
+
+    public static ErrorCode fromCode(String code) {
+        if (code == null || code.isBlank()) {
+            return null;
+        }
+
+        for (ErrorCode errorCode : values()) {
+            if (errorCode.code.equals(code)) {
+                return errorCode;
+            }
+        }
+        return null;
+    }
 }

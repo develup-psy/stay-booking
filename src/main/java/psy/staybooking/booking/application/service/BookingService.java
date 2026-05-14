@@ -23,7 +23,7 @@ import psy.staybooking.product.domain.Product;
 import psy.staybooking.product.domain.ProductSaleStatus;
 import psy.staybooking.product.repository.ProductRepository;
 import psy.staybooking.booking.repository.BookingRepository;
-import psy.staybooking.system.application.service.SystemModeService;
+import psy.staybooking.system.application.service.ModeService;
 import psy.staybooking.system.domain.SystemModeType;
 
 @Service
@@ -38,7 +38,7 @@ public class BookingService {
     private final BookingStockService bookingStockService;
     private final BookingTransactionService bookingTransactionService;
     private final CheckoutTokenProvider checkoutTokenProvider;
-    private final SystemModeService systemModeService;
+    private final ModeService modeService;
     private final Clock clock;
 
     public CheckoutResponse getCheckout(Long productId, Long userId) {
@@ -55,7 +55,7 @@ public class BookingService {
         }
 
         //2. 운영 모드에 따라 현재 재고 확인
-        SystemModeType currentMode = systemModeService.getCurrentMode();
+        SystemModeType currentMode = modeService.getCurrentMode();
         long availableStock;
         if (currentMode == SystemModeType.REDIS_NORMAL) {
             try {
@@ -67,7 +67,7 @@ public class BookingService {
                     throw exception;
                 }
             } catch (RuntimeException exception) {
-                systemModeService.switchToDbFallback("redis checkout stock access failed");
+                modeService.switchToDbFallback("redis checkout stock access failed", "booking-service");
                 availableStock = bookingStockService.getAvailableDatabaseStock(productId, product.getTotalStock());
             }
         } else if (currentMode == SystemModeType.DB_FALLBACK || currentMode == SystemModeType.RECOVERING) {
@@ -120,7 +120,7 @@ public class BookingService {
 
         //3. 운영 모드 확인 및 재고 확보 시도
         boolean reservedWithRedis = false;
-        SystemModeType currentMode = systemModeService.getCurrentMode();
+        SystemModeType currentMode = modeService.getCurrentMode();
         BookingCreateResult bookingCreateResult = null;
 
         //4-A. REDIS_NORMAL이면 Redis 기준으로 재고와 중복 요청 흔적을 먼저 확인
@@ -136,7 +136,7 @@ public class BookingService {
                     throw exception;
                 }
             } catch (RuntimeException exception) {
-                systemModeService.switchToDbFallback("redis stock reservation failed");
+                modeService.switchToDbFallback("redis stock reservation failed", "booking-service");
                 currentMode = SystemModeType.DB_FALLBACK;
                 reserved = false;
             }
@@ -217,22 +217,15 @@ public class BookingService {
         }
 
         //6. 외부 결제 실행
-        PaymentResponseDto paymentResponse;
-        try {
-            paymentResponse = paymentService.processExternalPayment(
-                bookingCreateResult.getPayment(),
-                PaymentCreateDto.builder()
-                    .bookingId(bookingCreateResult.getBooking().getBookingId())
-                    .totalAmount(checkoutTokenPayload.getBookedPriceAmount())
-                    .pointAmount(request.getPointAmount())
-                    .paymentDetail(request.getPaymentDetail())
-                    .build()
-            );
-        } catch (BusinessException exception) {
-            paymentResponse = PaymentResponseDto.failed(exception.getErrorCode().getCode(), exception.getMessage());
-        } catch (RuntimeException exception) {
-            paymentResponse = PaymentResponseDto.failed(ErrorCode.PAYMENT_PROVIDER_UNAVAILABLE.getCode(), "외부 결제 연동에 실패했습니다.");
-        }
+        PaymentResponseDto paymentResponse = paymentService.processExternalPayment(
+            bookingCreateResult.getPayment(),
+            PaymentCreateDto.builder()
+                .bookingId(bookingCreateResult.getBooking().getBookingId())
+                .totalAmount(checkoutTokenPayload.getBookedPriceAmount())
+                .pointAmount(request.getPointAmount())
+                .paymentDetail(request.getPaymentDetail())
+                .build()
+        );
 
         //7. TX-2: 결제 성공 또는 실패 최종 확정
         if (paymentResponse.isApproved()) {
@@ -253,6 +246,11 @@ public class BookingService {
         );
         if (reservedWithRedis) {
             bookingStockService.releaseRedisStock(request.getProductId(), checkoutTokenPayload.getCheckoutTokenId());
+        }
+
+        ErrorCode paymentErrorCode = ErrorCode.fromCode(failedBooking.getPayment().getLastErrorCode());
+        if (paymentErrorCode == ErrorCode.PAYMENT_PROVIDER_UNAVAILABLE || paymentErrorCode == ErrorCode.PAYMENT_PROCESSING_FAILED) {
+            throw new BusinessException(paymentErrorCode, failedBooking.getPayment().getLastErrorMessage());
         }
         throw new BusinessException(ErrorCode.PAYMENT_APPROVAL_FAILED, failedBooking.getPayment().getLastErrorMessage());
     }

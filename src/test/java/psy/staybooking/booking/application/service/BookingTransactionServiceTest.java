@@ -144,7 +144,7 @@ class BookingTransactionServiceTest {
             1L,
             1L,
             1L,
-            PaymentResponseDto.failed("MOCK_DECLINED", "모의 결제가 거절되었습니다.")
+            PaymentResponseDto.approvalFailed("MOCK_DECLINED", "모의 결제가 거절되었습니다.")
         );
 
         assertThat(result.getBooking().getStatus()).isEqualTo(psy.staybooking.booking.domain.BookingStatus.FAILED);

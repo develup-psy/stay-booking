@@ -55,3 +55,21 @@ checkout:
 booking:
   stock:
     path: redis
+
+payment:
+  api:
+    base-url: ${PAYMENT_API_BASE_URL:http://localhost:8081}
+
+mode:
+  health-checker:
+    delay-ms: 5000
+
+recovery:
+  orphan-stock:
+    delay-ms: 10000
+    stale-seconds: 30
+  pending-payment:
+    delay-ms: 10000
+    timeout-seconds: 180
+  redis-resync:
+    delay-ms: 10000

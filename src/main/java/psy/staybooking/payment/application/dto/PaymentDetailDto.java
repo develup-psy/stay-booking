@@ -12,4 +12,6 @@ import psy.staybooking.payment.domain.ExternalPaymentMethod;
 public interface PaymentDetailDto {
 
     ExternalPaymentMethod getExternalPaymentMethod();
+
+    void validate();
 }

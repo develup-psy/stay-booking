@@ -114,10 +114,11 @@ class PaymentTransactionServiceTest {
 
         Payment result = paymentTransactionService.failPayment(
             1L,
-            PaymentResponseDto.failed("DECLINED", "card declined")
+            PaymentResponseDto.approvalFailed("DECLINED", "card declined")
         );
 
         assertThat(result.getStatus()).isEqualTo(PaymentStatus.FAILED);
         assertThat(result.getLogs().get(result.getLogs().size() - 2).getEventType()).isEqualTo(psy.staybooking.payment.domain.PaymentEventType.APPROVAL_FAILED);
+        assertThat(result.getLastErrorCode()).isEqualTo(psy.staybooking.common.exception.ErrorCode.PAYMENT_APPROVAL_FAILED.getCode());
     }
 }
