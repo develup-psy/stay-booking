@@ -100,4 +100,29 @@ public class Product extends BaseTimeEntity {
             .checkOutAt(checkOutAt)
             .build();
     }
+
+    public ProductSaleStatus getSaleStatus(LocalDateTime now) {
+        if (now == null) {
+            throw new BusinessException(ErrorCode.INVALID_PARAMETER, "현재 시각은 필수입니다.");
+        }
+        if (now.isBefore(this.saleOpenAt)) {
+            return ProductSaleStatus.BEFORE_OPEN;
+        }
+        if (this.saleCloseAt != null && !now.isBefore(this.saleCloseAt)) {
+            return ProductSaleStatus.CLOSED;
+        }
+        return ProductSaleStatus.OPEN;
+    }
+
+    public void validateSaleOpen(LocalDateTime now) {
+        if (now == null) {
+            throw new BusinessException(ErrorCode.INVALID_PARAMETER, "현재 시각은 필수입니다.");
+        }
+        if (now.isBefore(this.saleOpenAt)) {
+            throw new BusinessException(ErrorCode.PRODUCT_SALE_NOT_OPEN, "아직 판매 시작 전인 상품입니다.");
+        }
+        if (this.saleCloseAt != null && !now.isBefore(this.saleCloseAt)) {
+            throw new BusinessException(ErrorCode.PRODUCT_SALE_CLOSED, "판매가 종료된 상품입니다.");
+        }
+    }
 }
