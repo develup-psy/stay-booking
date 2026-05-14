@@ -14,7 +14,10 @@ public class RedisHealthChecker {
     private final StringRedisTemplate stringRedisTemplate;
     private final ModeService modeService;
 
-    @Scheduled(fixedDelayString = "${mode.health-checker.delay-ms:5000}")
+    @Scheduled(
+        fixedDelayString = "${mode.health-checker.delay-ms:5000}",
+        initialDelayString = "${mode.health-checker.initial-delay-ms:5000}"
+    )
     public void checkRedisHealth() {
         SystemModeType currentMode = modeService.getCurrentMode();
         boolean redisHealthy = isRedisHealthy();
