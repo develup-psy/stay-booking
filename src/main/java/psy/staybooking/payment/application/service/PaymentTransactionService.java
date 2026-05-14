@@ -46,26 +46,38 @@ public class PaymentTransactionService {
             )
         );
 
-        if (payment.isPointOnly()) {
-            payment.markSucceeded();
-            return payment;
+        if (!payment.isPointOnly()) {
+            payment.startProcessing();
         }
-
-        payment.startProcessing();
         return payment;
     }
 
     @Transactional
-    public Payment completePayment(Long paymentId, PaymentResponseDto paymentResponse) {
-        Payment payment = paymentRepository.findById(paymentId)
-            .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "결제 정보를 찾을 수 없습니다."));
+    public Payment completePointOnlyPayment(Long paymentId) {
+        Payment payment = getPayment(paymentId);
+        payment.markSucceeded();
+        return payment;
+    }
 
-        if (paymentResponse.isApproved()) {
-            payment.approve(paymentResponse.getProviderTransactionId(), paymentResponse.getApprovedAt());
-            return payment;
-        }
+    @Transactional
+    public Payment succeedPayment(Long paymentId, PaymentResponseDto paymentResponse) {
+        Payment payment = getPayment(paymentId);
+        payment.recordApprovalSuccess(paymentResponse.getProviderTransactionId());
+        payment.approve(paymentResponse.getProviderTransactionId(), paymentResponse.getApprovedAt());
+        return payment;
+    }
 
+    @Transactional
+    public Payment failPayment(Long paymentId, PaymentResponseDto paymentResponse) {
+        Payment payment = getPayment(paymentId);
+        payment.recordApprovalFailure(paymentResponse.getErrorMessage());
         payment.fail(paymentResponse.getErrorCode(), paymentResponse.getErrorMessage());
         return payment;
+    }
+
+    @Transactional(readOnly = true)
+    public Payment getPayment(Long paymentId) {
+        return paymentRepository.findById(paymentId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "결제 정보를 찾을 수 없습니다."));
     }
 }

@@ -69,13 +69,7 @@ public class CheckoutTokenProvider {
                 .parseSignedClaims(checkoutToken)
                 .getPayload();
 
-            return CheckoutTokenPayload.builder()
-                .checkoutTokenId(claims.get("checkoutTokenId", String.class))
-                .userId(claims.get("userId", Long.class))
-                .productId(claims.get("productId", Long.class))
-                .bookedPriceAmount(claims.get("bookedPriceAmount", Long.class))
-                .expiresAt(LocalDateTime.ofInstant(claims.getExpiration().toInstant(), clock.getZone()))
-                .build();
+            return CheckoutTokenPayload.from(claims, clock.getZone());
         } catch (ExpiredJwtException exception) {
             throw new BusinessException(ErrorCode.CHECKOUT_TOKEN_EXPIRED);
         } catch (JwtException | IllegalArgumentException exception) {
