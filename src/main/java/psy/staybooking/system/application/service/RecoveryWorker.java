@@ -44,7 +44,10 @@ public class RecoveryWorker {
     @Value("${recovery.pending-payment.timeout-seconds:180}")
     private long pendingPaymentTimeoutSeconds;
 
-    @Scheduled(fixedDelayString = "${recovery.orphan-stock.delay-ms:10000}")
+    @Scheduled(
+        fixedDelayString = "${recovery.orphan-stock.delay-ms:10000}",
+        initialDelayString = "${recovery.orphan-stock.initial-delay-ms:10000}"
+    )
     public void recoverOrphanStockAllocations() {
         if (!workerLockService.tryLock(ORPHAN_STOCK_LOCK)) {
             return;
@@ -77,7 +80,10 @@ public class RecoveryWorker {
         }
     }
 
-    @Scheduled(fixedDelayString = "${recovery.pending-payment.delay-ms:10000}")
+    @Scheduled(
+        fixedDelayString = "${recovery.pending-payment.delay-ms:10000}",
+        initialDelayString = "${recovery.pending-payment.initial-delay-ms:10000}"
+    )
     public void recoverTimedOutPendingPayments() {
         if (!workerLockService.tryLock(PENDING_TIMEOUT_LOCK)) {
             return;
@@ -114,7 +120,10 @@ public class RecoveryWorker {
         }
     }
 
-    @Scheduled(fixedDelayString = "${recovery.redis-resync.delay-ms:10000}")
+    @Scheduled(
+        fixedDelayString = "${recovery.redis-resync.delay-ms:10000}",
+        initialDelayString = "${recovery.redis-resync.initial-delay-ms:10000}"
+    )
     public void resyncRedisStock() {
         if (!workerLockService.tryLock(REDIS_RESYNC_LOCK)) {
             return;
