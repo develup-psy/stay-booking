@@ -2,7 +2,9 @@ package psy.staybooking.booking.application.service;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -78,5 +80,39 @@ public class BookingStockService {
         String remainingKey = "stock:product:" + productId + ":remaining";
         String holdersKey = "stock:product:" + productId + ":holders";
         stringRedisTemplate.execute(bookingReleaseStockScript, List.of(remainingKey, holdersKey), checkoutTokenId);
+    }
+
+    public Map<String, String> getRedisHolders(Long productId) {
+        //1. 상품 기준 holders hash를 조회
+        String holdersKey = "stock:product:" + productId + ":holders";
+        Map<Object, Object> rawEntries = stringRedisTemplate.opsForHash().entries(holdersKey);
+        Map<String, String> holders = new HashMap<>();
+
+        for (Map.Entry<Object, Object> entry : rawEntries.entrySet()) {
+            holders.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
+        }
+
+        return holders;
+    }
+
+    public boolean hasRedisHolder(Long productId, String checkoutTokenId) {
+        //1. 특정 checkoutToken의 holders 흔적 존재 여부 확인
+        String holdersKey = "stock:product:" + productId + ":holders";
+        Boolean exists = stringRedisTemplate.opsForHash().hasKey(holdersKey, checkoutTokenId);
+        return Boolean.TRUE.equals(exists);
+    }
+
+    public void syncRedisStock(Long productId, long remainingStock, Map<String, String> holders) {
+        //1. remaining과 holders를 DB 기준으로 다시 구성
+        String remainingKey = "stock:product:" + productId + ":remaining";
+        String holdersKey = "stock:product:" + productId + ":holders";
+
+        stringRedisTemplate.opsForValue().set(remainingKey, String.valueOf(Math.max(remainingStock, 0)));
+        stringRedisTemplate.delete(holdersKey);
+
+        if (holders != null && !holders.isEmpty()) {
+            Map<String, String> holdersToSync = new HashMap<>(holders);
+            stringRedisTemplate.opsForHash().putAll(holdersKey, holdersToSync);
+        }
     }
 }
