@@ -43,7 +43,7 @@ class PaymentTransactionServiceTest {
                 .build()
         );
 
-        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
     }
 
     @Test
@@ -82,16 +82,42 @@ class PaymentTransactionServiceTest {
     }
 
     @Test
-    void completePaymentApprovesPayment() {
+    void succeedPaymentApprovesPayment() {
         Payment payment = Payment.create(1L, 100_000L, 20_000L, ExternalPaymentMethod.CARD);
         payment.startProcessing();
         when(paymentRepository.findById(1L)).thenReturn(Optional.of(payment));
 
-        Payment result = paymentTransactionService.completePayment(
+        Payment result = paymentTransactionService.succeedPayment(
             1L,
             PaymentResponseDto.approved("mock-1", LocalDateTime.of(2026, 5, 14, 18, 0))
         );
 
         assertThat(result.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+        assertThat(result.getLogs().get(result.getLogs().size() - 2).getEventType()).isEqualTo(psy.staybooking.payment.domain.PaymentEventType.APPROVAL_SUCCEEDED);
+    }
+
+    @Test
+    void completePointOnlyPaymentMarksPaymentSucceeded() {
+        Payment payment = Payment.create(1L, 50_000L, 50_000L, null);
+        when(paymentRepository.findById(1L)).thenReturn(Optional.of(payment));
+
+        Payment result = paymentTransactionService.completePointOnlyPayment(1L);
+
+        assertThat(result.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+    }
+
+    @Test
+    void failPaymentFailsPayment() {
+        Payment payment = Payment.create(1L, 100_000L, 20_000L, ExternalPaymentMethod.CARD);
+        payment.startProcessing();
+        when(paymentRepository.findById(1L)).thenReturn(Optional.of(payment));
+
+        Payment result = paymentTransactionService.failPayment(
+            1L,
+            PaymentResponseDto.failed("DECLINED", "card declined")
+        );
+
+        assertThat(result.getStatus()).isEqualTo(PaymentStatus.FAILED);
+        assertThat(result.getLogs().get(result.getLogs().size() - 2).getEventType()).isEqualTo(psy.staybooking.payment.domain.PaymentEventType.APPROVAL_FAILED);
     }
 }
