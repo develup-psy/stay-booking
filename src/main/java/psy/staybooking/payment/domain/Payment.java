@@ -90,8 +90,7 @@ public class Payment extends BaseTimeEntity {
         Long bookingId,
         long totalAmount,
         long pointAmount,
-        ExternalPaymentMethod externalMethod,
-        long externalAmount
+        ExternalPaymentMethod externalPaymentMethod
     ) {
         if (bookingId == null || bookingId <= 0) {
             throw new BusinessException(ErrorCode.INVALID_PARAMETER, "예약 식별자는 필수입니다.");
@@ -102,19 +101,17 @@ public class Payment extends BaseTimeEntity {
         if (pointAmount < 0) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "포인트 금액은 0 이상이어야 합니다.");
         }
+        long externalAmount = totalAmount - pointAmount;
+
         if (externalAmount < 0) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "외부 결제 금액은 0 이상이어야 합니다.");
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "포인트 금액은 총 결제 금액을 초과할 수 없습니다.");
         }
 
-        if (pointAmount + externalAmount != totalAmount) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "결제 금액 구성이 올바르지 않습니다.");
-        }
-
-        if (externalAmount == 0 && externalMethod != null) {
+        if (externalAmount == 0 && externalPaymentMethod != null) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "포인트 전액 결제에는 외부 결제 수단이 있으면 안 됩니다.");
         }
 
-        if (externalAmount > 0 && externalMethod == null) {
+        if (externalAmount > 0 && externalPaymentMethod == null) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "외부 결제 금액이 있으면 결제 수단이 필요합니다.");
         }
 
@@ -123,7 +120,7 @@ public class Payment extends BaseTimeEntity {
             .status(PaymentStatus.PENDING)
             .totalAmount(totalAmount)
             .pointAmount(pointAmount)
-            .externalMethod(externalMethod)
+            .externalMethod(externalPaymentMethod)
             .externalAmount(externalAmount)
             .build();
         payment.addLog(PaymentEventType.CREATED, null);
