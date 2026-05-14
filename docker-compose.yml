@@ -36,17 +36,38 @@ services:
       timeout: 5s
       retries: 10
 
-  pay-fake:
+  payment-fake:
+    image: psy99/stay-booking-pg-fake:latest
+    container_name: stay-booking-pg-fake
+    platform: linux/amd64
+    ports:
+      - "8081:8081"
+
+  stay-booking:
     build:
-      context: ../pay_fake/server
+      context: .
       dockerfile: Dockerfile
-    image: stay-booking-pay-fake:latest
-    container_name: stay-booking-pay-fake
+    image: stay-booking-app:latest
+    container_name: stay-booking-app
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      payment-fake:
+        condition: service_started
     environment:
-      SERVER_PORT: 8082
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: stay_booking
+      DB_USERNAME: stay_booking
+      DB_PASSWORD: stay_booking
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      PAYMENT_API_BASE_URL: http://payment-fake:8081
       TZ: Asia/Seoul
     ports:
-      - "8082:8082"
+      - "8080:8080"
 
 volumes:
   mysql-data:

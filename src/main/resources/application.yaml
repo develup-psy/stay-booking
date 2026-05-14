@@ -58,4 +58,4 @@ booking:
 
 payment:
   api:
-    base-url: ${PAYMENT_API_BASE_URL:http://localhost:8082}
+    base-url: ${PAYMENT_API_BASE_URL:http://localhost:8081}
