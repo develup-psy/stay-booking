@@ -69,6 +69,31 @@ services:
     ports:
       - "8080:8080"
 
+  db-seed:
+    image: mysql:8.4
+    container_name: stay-booking-db-seed
+    depends_on:
+      mysql:
+        condition: service_healthy
+      stay-booking:
+        condition: service_started
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: stay_booking
+      MYSQL_USER: stay_booking
+      MYSQL_PASSWORD: stay_booking
+    volumes:
+      - ./docker/mysql/seed.sql:/seed.sql:ro
+    entrypoint:
+      - sh
+      - -c
+      - |
+        until mysql -h"$$MYSQL_HOST" -P"$$MYSQL_PORT" -u"$$MYSQL_USER" -p"$$MYSQL_PASSWORD" "$$MYSQL_DATABASE" -e "SELECT 1 FROM products LIMIT 1" >/dev/null 2>&1; do
+          sleep 2
+        done
+        mysql -h"$$MYSQL_HOST" -P"$$MYSQL_PORT" -u"$$MYSQL_USER" -p"$$MYSQL_PASSWORD" "$$MYSQL_DATABASE" < /seed.sql
+
 volumes:
   mysql-data:
   redis-data:
