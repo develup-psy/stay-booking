@@ -147,18 +147,18 @@ sequenceDiagram
         API->>Redis: reserve(productId, checkoutTokenId)
         alt 재고 확보 성공
             Redis-->>API: reserved
-            API->>DB: TX-1\nBooking(PENDING_PAYMENT)\nPayment(PENDING)\nPointHold(HELD, optional)
+            API->>DB: TX-1: Booking(PENDING_PAYMENT), Payment(PENDING), PointHold(HELD, optional)
             DB-->>API: commit
 
             API->>PG: 결제 승인 요청
             alt 승인 성공
                 PG-->>API: success
-                API->>DB: TX-2\nPayment(SUCCEEDED)\nPointHold(COMMITTED)\nBooking(CONFIRMED)
+                API->>DB: TX-2: Payment(SUCCEEDED), PointHold(COMMITTED), Booking(CONFIRMED)
                 DB-->>API: commit
                 API-->>User: 예약 성공
             else 승인 실패
                 PG-->>API: failure
-                API->>DB: TX-2\nPayment(FAILED)\nPointHold(RELEASED)\nBooking(FAILED)
+                API->>DB: TX-2: Payment(FAILED), PointHold(RELEASED), Booking(FAILED)
                 DB-->>API: commit
                 API->>Redis: release(productId, checkoutTokenId)
                 API-->>User: 예약 실패
@@ -192,7 +192,7 @@ sequenceDiagram
 
     API->>Mode: 현재 운영 모드 조회
     Mode-->>API: DB_FALLBACK
-    API->>DB: TX-1\nSELECT ... FOR UPDATE\n활성 예약 수 계산\nBooking(PENDING_PAYMENT) 생성
+    API->>DB: TX-1: SELECT ... FOR UPDATE, 활성 예약 수 계산, Booking(PENDING_PAYMENT) 생성
     DB-->>API: commit
 
     Health->>Redis: PING recovered
