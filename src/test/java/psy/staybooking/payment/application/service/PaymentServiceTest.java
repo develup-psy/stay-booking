@@ -88,11 +88,11 @@ class PaymentServiceTest {
         pendingPayment.startProcessing();
         when(paymentTransactionService.createPayment(any(PaymentCreateDto.class))).thenReturn(pendingPayment);
         when(paymentProcessor.processPayment(any(Payment.class), any())).thenReturn(
-            PaymentResponseDto.failed("MOCK_DECLINED", "모의 결제가 거절되었습니다.")
+            PaymentResponseDto.approvalFailed("MOCK_DECLINED", "모의 결제가 거절되었습니다.")
         );
         Payment failedPayment = Payment.create(1L, 100_000L, 0L, ExternalPaymentMethod.YPAY);
         failedPayment.startProcessing();
-        failedPayment.fail("MOCK_DECLINED", "모의 결제가 거절되었습니다.");
+        failedPayment.fail(psy.staybooking.common.exception.ErrorCode.PAYMENT_APPROVAL_FAILED.getCode(), "모의 결제가 거절되었습니다.");
         when(paymentTransactionService.failPayment(eq(pendingPayment.getPaymentId()), any(PaymentResponseDto.class))).thenReturn(failedPayment);
 
         Payment payment = paymentService.processPayment(
@@ -108,6 +108,6 @@ class PaymentServiceTest {
         );
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
-        assertThat(payment.getLastErrorCode()).isEqualTo("MOCK_DECLINED");
+        assertThat(payment.getLastErrorCode()).isEqualTo(psy.staybooking.common.exception.ErrorCode.PAYMENT_APPROVAL_FAILED.getCode());
     }
 }

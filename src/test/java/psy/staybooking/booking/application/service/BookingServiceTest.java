@@ -203,11 +203,11 @@ class BookingServiceTest {
         setPaymentId(payment, 1L);
         Payment failedPayment = Payment.create(1L, 100_000L, 20_000L, psy.staybooking.payment.domain.ExternalPaymentMethod.CARD);
         failedPayment.startProcessing();
-        failedPayment.fail("MOCK_DECLINED", "모의 결제가 거절되었습니다.");
+        failedPayment.fail(ErrorCode.PAYMENT_APPROVAL_FAILED.getCode(), "모의 결제가 거절되었습니다.");
         setPaymentId(failedPayment, 1L);
         Booking failedBooking = Booking.createPending("B-001", 1L, 10L, "token-id", 100_000L);
         setBookingId(failedBooking, 1L);
-        failedBooking.fail("MOCK_DECLINED", LocalDateTime.of(2026, 5, 14, 18, 0));
+        failedBooking.fail(ErrorCode.PAYMENT_APPROVAL_FAILED.getCode(), LocalDateTime.of(2026, 5, 14, 18, 0));
 
         when(checkoutTokenProvider.parseCheckoutToken("checkout-token")).thenReturn(checkoutTokenPayload);
         when(bookingRepository.findByCheckoutTokenId("token-id")).thenReturn(Optional.empty());
@@ -220,7 +220,7 @@ class BookingServiceTest {
                 .build()
         );
         when(paymentService.processExternalPayment(eq(payment), any(PaymentCreateDto.class))).thenReturn(
-            PaymentResponseDto.failed("MOCK_DECLINED", "모의 결제가 거절되었습니다.")
+            PaymentResponseDto.approvalFailed("MOCK_DECLINED", "모의 결제가 거절되었습니다.")
         );
         when(bookingTransactionService.failBooking(eq(1L), eq(1L), eq(1L), any(PaymentResponseDto.class)))
             .thenReturn(BookingCreateResult.builder().booking(failedBooking).payment(failedPayment).build());

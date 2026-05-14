@@ -18,7 +18,7 @@ public class PaymentStrategyFactory {
             .filter(paymentStrategy -> paymentStrategy.supports(paymentContext))
             .findFirst()
             .orElseThrow(() -> new BusinessException(
-                ErrorCode.INVALID_INPUT_VALUE,
+                ErrorCode.PAYMENT_PROCESSING_FAILED,
                 "결제 전략을 찾을 수 없습니다."
             ));
     }

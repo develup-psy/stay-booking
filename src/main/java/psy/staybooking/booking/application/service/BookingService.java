@@ -217,22 +217,15 @@ public class BookingService {
         }
 
         //6. 외부 결제 실행
-        PaymentResponseDto paymentResponse;
-        try {
-            paymentResponse = paymentService.processExternalPayment(
-                bookingCreateResult.getPayment(),
-                PaymentCreateDto.builder()
-                    .bookingId(bookingCreateResult.getBooking().getBookingId())
-                    .totalAmount(checkoutTokenPayload.getBookedPriceAmount())
-                    .pointAmount(request.getPointAmount())
-                    .paymentDetail(request.getPaymentDetail())
-                    .build()
-            );
-        } catch (BusinessException exception) {
-            paymentResponse = PaymentResponseDto.failed(exception.getErrorCode().getCode(), exception.getMessage());
-        } catch (RuntimeException exception) {
-            paymentResponse = PaymentResponseDto.failed(ErrorCode.PAYMENT_PROVIDER_UNAVAILABLE.getCode(), "외부 결제 연동에 실패했습니다.");
-        }
+        PaymentResponseDto paymentResponse = paymentService.processExternalPayment(
+            bookingCreateResult.getPayment(),
+            PaymentCreateDto.builder()
+                .bookingId(bookingCreateResult.getBooking().getBookingId())
+                .totalAmount(checkoutTokenPayload.getBookedPriceAmount())
+                .pointAmount(request.getPointAmount())
+                .paymentDetail(request.getPaymentDetail())
+                .build()
+        );
 
         //7. TX-2: 결제 성공 또는 실패 최종 확정
         if (paymentResponse.isApproved()) {
@@ -253,6 +246,11 @@ public class BookingService {
         );
         if (reservedWithRedis) {
             bookingStockService.releaseRedisStock(request.getProductId(), checkoutTokenPayload.getCheckoutTokenId());
+        }
+
+        ErrorCode paymentErrorCode = ErrorCode.fromCode(failedBooking.getPayment().getLastErrorCode());
+        if (paymentErrorCode == ErrorCode.PAYMENT_PROVIDER_UNAVAILABLE || paymentErrorCode == ErrorCode.PAYMENT_PROCESSING_FAILED) {
+            throw new BusinessException(paymentErrorCode, failedBooking.getPayment().getLastErrorMessage());
         }
         throw new BusinessException(ErrorCode.PAYMENT_APPROVAL_FAILED, failedBooking.getPayment().getLastErrorMessage());
     }

@@ -25,6 +25,7 @@ public class PaymentTransactionService {
             throw new BusinessException(ErrorCode.INVALID_PARAMETER, "외부 결제 상세 정보가 필요합니다.");
         }
         if (request.getPaymentDetail() != null) {
+            request.getPaymentDetail().validate();
             if (externalPaymentMethod != null && externalPaymentMethod != request.getPaymentDetail().getExternalPaymentMethod()) {
                 throw new BusinessException(ErrorCode.INVALID_PARAMETER, "외부 결제 수단과 결제 상세 정보가 일치하지 않습니다.");
             }
@@ -34,7 +35,7 @@ public class PaymentTransactionService {
             throw new BusinessException(ErrorCode.INVALID_PARAMETER, "외부 결제 수단이 필요합니다.");
         }
         if (request.getPointAmount() == request.getTotalAmount() && request.getPaymentDetail() != null) {
-            throw new BusinessException(ErrorCode.INVALID_PARAMETER, "외부 결제 수단과 결제 상세 정보가 일치하지 않습니다.");
+            throw new BusinessException(ErrorCode.INVALID_PARAMETER, "포인트 전액 결제에는 외부 결제 상세 정보가 있으면 안 됩니다.");
         }
 
         Payment payment = paymentRepository.save(
@@ -70,7 +71,7 @@ public class PaymentTransactionService {
     @Transactional
     public Payment failPayment(Long paymentId, PaymentResponseDto paymentResponse) {
         Payment payment = getPayment(paymentId);
-        payment.recordApprovalFailure(paymentResponse.getErrorMessage());
+        payment.recordApprovalFailure(paymentResponse.getProviderErrorCode(), paymentResponse.getErrorMessage());
         payment.fail(paymentResponse.getErrorCode(), paymentResponse.getErrorMessage());
         return payment;
     }
